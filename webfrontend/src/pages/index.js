@@ -1,0 +1,12 @@
+export { Home } from "./Home";
+export { Shop } from "./Shop";
+export { ProductDetails } from "./ProductDetails";
+export { Cart } from "./Cart";
+export { Wishlist } from "./Wishlist";
+export { Checkout } from "./Checkout";
+export { Login } from "./Login";
+export { Register } from "./Register";
+export { ForgotPassword } from "./ForgotPassword";
+export { Profile } from "./Profile";
+export { Orders } from "./Orders";
+export { NotFound } from "./NotFound";
