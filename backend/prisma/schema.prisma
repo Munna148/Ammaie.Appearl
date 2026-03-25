@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  user
+  admin
+}
+
+enum OrderStatus {
+  Pending
+  Shipped
+  Delivered
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+}
+
+model User {
+  id         String      @id @default(cuid())
+  name       String?
+  email      String      @unique
+  password   String
+  phone      String?
+  role       UserRole    @default(user)
+  createdAt  DateTime    @default(now())
+  carts      Cart[]
+  orders     Order[]
+  complaints Complaint[]
+}
+
+model Product {
+  id            String      @id @default(cuid())
+  name          String
+  description   String
+  price         Float
+  discountPrice Float?
+  category      String
+  sizes         String[]
+  colors        String[]
+  images        String[]
+  stock         Int         @default(0)
+  rating        Float       @default(0)
+  createdAt     DateTime    @default(now())
+  carts         Cart[]
+  orderItems    OrderItem[]
+}
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  quantity  Int      @default(1)
+  size      String
+  color     String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([productId])
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  userId        String
+  totalAmount   Float
+  paymentMethod String
+  status        OrderStatus @default(Pending)
+  shippingAddress Json?
+  createdAt     DateTime    @default(now())
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items         OrderItem[]
+
+  @@index([userId])
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+  size      String?
+  color     String?
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Complaint {
+  id        String          @id @default(cuid())
+  userId    String
+  subject   String
+  message   String
+  status    ComplaintStatus @default(OPEN)
+  createdAt DateTime        @default(now())
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

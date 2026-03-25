@@ -4,9 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
 
-const connectDB = require('./config/db');
 const routes = require('./routes');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
@@ -21,7 +19,6 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 app.use(helmet());
-app.use(mongoSanitize());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -47,11 +44,6 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-const start = async () => {
-  await connectDB();
-  app.listen(PORT, () => {
-    console.log(`Server running in ${process.env.NODE_ENV || 'development'} on port ${PORT}`);
-  });
-};
-
-start();
+app.listen(PORT, () => {
+  console.log(`Server running in ${process.env.NODE_ENV || 'development'} on port ${PORT}`);
+});

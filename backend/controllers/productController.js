@@ -1,4 +1,4 @@
-const { Product } = require('../models');
+const prisma = require('../prisma/client');
 const { sendResponse } = require('../utils/response');
 
 const getProducts = async (req, res, next) => {
@@ -13,26 +13,37 @@ const getProducts = async (req, res, next) => {
       limit = 12,
     } = req.query;
 
-    const query = {};
+    const where = {
+      ...(search
+        ? { name: { contains: String(search), mode: 'insensitive' } }
+        : {}),
+      ...(category ? { category } : {}),
+      ...((minPrice !== undefined || maxPrice !== undefined)
+        ? {
+            price: {
+              ...(minPrice !== undefined ? { gte: Number(minPrice) } : {}),
+              ...(maxPrice !== undefined ? { lte: Number(maxPrice) } : {}),
+            },
+          }
+        : {}),
+    };
 
-    if (search) {
-      query.name = { $regex: search, $options: 'i' };
-    }
-    if (category) {
-      query.category = category;
-    }
-    if (minPrice !== undefined || maxPrice !== undefined) {
-      query.price = {};
-      if (minPrice !== undefined) query.price.$gte = Number(minPrice);
-      if (maxPrice !== undefined) query.price.$lte = Number(maxPrice);
-    }
-
-    const sortOption = sort === 'price' ? { price: 1 } : { createdAt: -1 };
+    const sortOption =
+      sort === 'price_asc' || sort === 'price'
+        ? { price: 'asc' }
+        : sort === 'price_desc'
+        ? { price: 'desc' }
+        : { createdAt: 'desc' };
     const skip = (Number(page) - 1) * Number(limit);
 
     const [products, total] = await Promise.all([
-      Product.find(query).sort(sortOption).skip(skip).limit(Number(limit)).lean(),
-      Product.countDocuments(query),
+      prisma.product.findMany({
+        where,
+        orderBy: sortOption,
+        skip,
+        take: Number(limit),
+      }),
+      prisma.product.count({ where }),
     ]);
 
     return sendResponse(res, true, '', {
@@ -51,7 +62,7 @@ const getProducts = async (req, res, next) => {
 
 const getProductById = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await prisma.product.findUnique({ where: { id: req.params.id } });
     if (!product) {
       return sendResponse(res, false, 'Product not found', null, 404);
     }
@@ -63,7 +74,17 @@ const getProductById = async (req, res, next) => {
 
 const createProduct = async (req, res, next) => {
   try {
-    const product = await Product.create(req.body);
+    const product = await prisma.product.create({
+      data: {
+        ...req.body,
+        price: Number(req.body.price),
+        discountPrice:
+          req.body.discountPrice === undefined || req.body.discountPrice === null || req.body.discountPrice === ''
+            ? null
+            : Number(req.body.discountPrice),
+        stock: Number(req.body.stock),
+      },
+    });
     return sendResponse(res, true, 'Product created', { product }, 201);
   } catch (error) {
     next(error);
@@ -72,13 +93,26 @@ const createProduct = async (req, res, next) => {
 
 const updateProduct = async (req, res, next) => {
   try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
-    if (!product) {
+    const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
+    if (!existing) {
       return sendResponse(res, false, 'Product not found', null, 404);
     }
+    const product = await prisma.product.update({
+      where: { id: req.params.id },
+      data: {
+        ...req.body,
+        ...(req.body.price !== undefined ? { price: Number(req.body.price) } : {}),
+        ...(req.body.discountPrice !== undefined
+          ? {
+              discountPrice:
+                req.body.discountPrice === null || req.body.discountPrice === ''
+                  ? null
+                  : Number(req.body.discountPrice),
+            }
+          : {}),
+        ...(req.body.stock !== undefined ? { stock: Number(req.body.stock) } : {}),
+      },
+    });
     return sendResponse(res, true, 'Product updated', { product });
   } catch (error) {
     next(error);
@@ -87,10 +121,11 @@ const updateProduct = async (req, res, next) => {
 
 const deleteProduct = async (req, res, next) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const product = await prisma.product.findUnique({ where: { id: req.params.id } });
     if (!product) {
       return sendResponse(res, false, 'Product not found', null, 404);
     }
+    await prisma.product.delete({ where: { id: req.params.id } });
     return sendResponse(res, true, 'Product deleted', null);
   } catch (error) {
     next(error);

@@ -9,14 +9,14 @@ const router = express.Router();
 router.use(protect);
 
 const addToCartValidation = [
-  body('productId').isMongoId().withMessage('Valid product ID is required'),
+  body('productId').isString().notEmpty().withMessage('Valid product ID is required'),
   body('quantity').optional().isInt({ min: 1 }),
   body('size').isIn(['XS', 'S', 'M', 'L', 'XL']).withMessage('Valid size is required'),
   body('color').trim().notEmpty().withMessage('Color is required'),
 ];
 
 const updateCartValidation = [
-  param('productId').isMongoId().withMessage('Valid product ID is required'),
+  param('productId').isString().notEmpty().withMessage('Valid product ID is required'),
   body('quantity').isInt({ min: 0 }).withMessage('Valid quantity is required'),
 ];
 
